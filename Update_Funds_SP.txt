@@ -1,0 +1,73 @@
+--------------------------------------------------------
+--  DDL for Procedure UPDATE_FUNDS
+--------------------------------------------------------
+set define off;
+
+  CREATE OR REPLACE EDITIONABLE PROCEDURE "ADMIN"."UPDATE_FUNDS" (TXN_TYPE IN VARCHAR2,AMOUNT IN NUMBER)
+AS
+p_txnType varchar2(10);
+p_amt number(10,2);
+e_invalid_txntype EXCEPTION;
+e_invalid_amount EXCEPTION;
+e_invalid_amt_balance EXCEPTION;
+p_newAmt number(10,2);
+p_user varchar2(50);
+
+BEGIN
+
+--check txn type is valid---
+SELECT UPPER(TXN_TYPE) INTO p_txnType from DUAL;
+
+SELECT CUST_BUYINGPOWER INTO p_amt FROM Admin.CUSTOMER WHERE UPPER(CUST_USERNAME) = UPPER((SELECT USER FROM DUAL));
+IF(p_txntype = 'ADD')
+THEN
+
+    p_newAmt:= p_amt + AMOUNT;
+    IF(p_newAmt > 5000)
+    THEN 
+    RAISE e_invalid_amount;
+    ELSE
+    UPDATE CUSTOMER SET CUST_BUYINGPOWER = p_newAmt WHERE UPPER(CUST_USERNAME) = UPPER((SELECT USER FROM DUAL));
+    COMMIT;
+    dbms_output.put_line('THE FUNDS ARE UPDATED, BUYING POWER CHANGED FROM $'|| p_amt || ' TO $' || p_newAmt);
+    END IF;
+
+ELSIF(p_txntype = 'DRAW')
+THEN
+    IF(AMOUNT > p_amt)
+    THEN
+    RAISE e_invalid_amt_balance;
+    ELSE
+    p_newAmt:= p_amt - AMOUNT;
+    UPDATE CUSTOMER SET CUST_BUYINGPOWER = p_newAmt WHERE UPPER(CUST_USERNAME) = UPPER((SELECT USER FROM DUAL));
+    COMMIT;
+    dbms_output.put_line('THE FUNDS ARE UPDATED, BUYING POWER CHANGED FROM $'|| p_amt || ' TO $' || p_newAmt);
+    END IF;
+
+ELSIF(p_txnType != 'ADD' OR p_txnType != 'DRAW')
+THEN 
+RAISE e_invalid_txntype;
+
+END IF;
+
+EXCEPTION 
+WHEN 
+e_invalid_txntype
+THEN 
+dbms_output.put_line('THIS IS AN INVALID TRANSACTION TYPE!!');
+WHEN
+e_invalid_amount
+THEN 
+dbms_output.put_line('Invalid amount entered!!');
+WHEN
+e_invalid_amt_balance
+THEN
+dbms_output.put_line('ENTERED AMOUNT IS MORE THAN AVAILABLE BALANCE!!');
+
+
+END;
+
+
+/
+
+  GRANT EXECUTE ON "ADMIN"."UPDATE_FUNDS" TO "DB_CUSTOMERS";
